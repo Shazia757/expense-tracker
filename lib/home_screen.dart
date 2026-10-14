@@ -1,5 +1,6 @@
 import 'package:expense_management_app/edit_screen.dart';
 import 'package:flutter/material.dart';
+import '../database/database_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,6 +11,44 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+
+  List<Map<String, dynamic>> transactions = [];
+  double totalIncome = 0;
+  double totalExpenses = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadTransactions();
+  }
+
+  Future<void> loadTransactions() async {
+    final data = await _dbHelper.getTransactions();
+
+    double income = 0;
+    double expenses = 0;
+
+    for (final transaction in data) {
+      final amount = (transaction['amount'] as num).toDouble();
+
+      if (transaction['type'] == 'Income') {
+        income += amount;
+      } else if (transaction['type'] == 'Expense') {
+        expenses += amount;
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      transactions = data;
+      totalIncome = income;
+      totalExpenses = expenses;
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '₹25,000.00',
+                Text(
+                  '₹${(totalIncome - totalExpenses).toStringAsFixed(2)}',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 30,
@@ -60,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -73,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  '₹30,000',
+                                  '₹${totalIncome.toStringAsFixed(2)}',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -97,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -110,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  '₹5,000',
+                                  '₹${totalExpenses.toStringAsFixed(2)}',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -229,6 +268,88 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          if (isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (transactions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 30),
+              child: Center(
+                child: Text(
+                  'No transactions yet. Tap + to add one!',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            )
+          else
+            ...transactions.take(5).map((transaction) {
+              final isIncome = transaction['type'] == 'Income';
+              final amount = (transaction['amount'] as num).toDouble();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isIncome
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isIncome
+                            ? Icons.arrow_downward_rounded
+                            : Icons.arrow_upward_rounded,
+                        color: isIncome ? Colors.green : Colors.red,
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            transaction['name'].toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${transaction['type']} • ${transaction['date']}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Text(
+                      '${isIncome ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isIncome ? Colors.green : Colors.red,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -257,10 +378,15 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Color(0xFF438883),
         foregroundColor: Colors.white,
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (context) => AddScreen())),
-        child: Icon(Icons.add),
+        onPressed: () async {
+          final result = await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => AddScreen()));
+
+          if (result == true) {
+            await loadTransactions();
+          }
+        },
       ),
     );
   }
