@@ -94,6 +94,3 @@ The database is initialized automatically when the application first accesses it
 
 Expenzia is designed as a Flutter application for mobile devices. SQLite data is stored locally on the device and is not automatically shared between devices.
 
-## License
-
-This project is developed for learning and personal finance management purposes. Add an appropriate license before distributing or publishing the application.
