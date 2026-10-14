@@ -1,4 +1,5 @@
 import 'package:expense_management_app/onboarding_screen.dart';
+import 'package:expense_management_app/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -19,7 +20,7 @@ class MyApp extends StatelessWidget {
           seedColor: const Color.fromRGBO(67, 136, 131, 255),
         ),
       ),
-      home: const OnboardingScreen(),
+      home: const SplashScreen(),
     );
   }
 }
